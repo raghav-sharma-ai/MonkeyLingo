@@ -152,12 +152,13 @@ function pollStatus(jobId) {
 }
 
 function showResult(result) {
-  dubbedVideoUrl = result.mp4_url;
+  dubbedVideoUrl = `${result.mp4_url}?t=${Date.now()}`;
   outputPlayer.src = dubbedVideoUrl;
+  outputPlayer.load();
 
-  downloadMp4.href = result.mp4_url;
-  downloadWav.href = result.wav_url;
-  downloadSrt.href = result.srt_url;
+  downloadMp4.href = `${result.mp4_url}?t=${Date.now()}`;
+  downloadWav.href = `${result.wav_url}?t=${Date.now()}`;
+  downloadSrt.href = `${result.srt_url}?t=${Date.now()}`;
   creditsSpent.textContent = result.credits_used;
 
   resultView.style.display = 'block';
