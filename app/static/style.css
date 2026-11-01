@@ -384,6 +384,54 @@ select:focus, textarea:focus {
   color: var(--accent-orange);
 }
 
+/* Interactive Refine & Improve Container */
+.refine-container {
+  margin-top: 20px;
+  padding: 16px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+}
+
+.refine-container h4 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-main);
+}
+
+.refine-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.refine-input-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+}
+
+.refine-input-group textarea:focus {
+  outline: 2px solid var(--accent-orange);
+  border-color: transparent;
+}
+
+.refine-status-box {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #FFF9E6;
+  border: 1px solid var(--accent-yellow);
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .credits-spent {
   font-size: 12px;
   color: var(--text-muted);

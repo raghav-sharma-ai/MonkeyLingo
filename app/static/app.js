@@ -251,3 +251,60 @@ feedbackForm.addEventListener('submit', async (e) => {
     setTimeout(() => { feedbackMsg.textContent = ''; }, 3000);
   }
 });
+
+// Interactive Comment & Improve Feature
+const btnApplyImprovement = document.getElementById('btn-apply-improvement');
+const refineCommentInput = document.getElementById('refine-comment-input');
+const refineStatusBox = document.getElementById('refine-status-box');
+
+if (btnApplyImprovement) {
+  btnApplyImprovement.addEventListener('click', async () => {
+    const instruction = refineCommentInput.value.trim();
+    if (!instruction) {
+      alert('Please enter your comment or instruction on what to improve.');
+      return;
+    }
+    if (!currentJobId) {
+      alert('No active video found. Please upload and dub a video first.');
+      return;
+    }
+
+    btnApplyImprovement.disabled = true;
+    btnApplyImprovement.textContent = 'Refining Dialogue & Re-Dubbing...';
+    refineStatusBox.style.display = 'block';
+    refineStatusBox.innerHTML = '<strong>Processing refinement:</strong> AI is analyzing dialogue changes, updating pauses, and re-rendering audio...';
+
+    try {
+      const res = await fetch('/api/refine-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: currentJobId,
+          instruction: instruction
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Refinement failed.');
+      }
+
+      const data = await res.json();
+      refineStatusBox.innerHTML = `<strong>✓ Success:</strong> ${data.message}<br><small class="mono">${(data.revised_lines || []).join(' | ')}</small>`;
+      
+      // Update player to play the newly improved video
+      dubbedVideoUrl = data.mp4_url;
+      outputPlayer.src = dubbedVideoUrl;
+      outputPlayer.play();
+      btnToggleDubbed.classList.add('active');
+      btnToggleOriginal.classList.remove('active');
+
+      downloadMp4.href = data.mp4_url;
+    } catch (err) {
+      refineStatusBox.innerHTML = `<span style="color: #D32F2F;"><strong>Error:</strong> ${err.message}</span>`;
+    } finally {
+      btnApplyImprovement.disabled = false;
+      btnApplyImprovement.textContent = 'Apply AI Refinement & Re-Dub';
+    }
+  });
+}

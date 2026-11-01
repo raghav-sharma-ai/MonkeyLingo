@@ -136,6 +136,17 @@
             </div>
           </div>
 
+          <!-- Interactive Comment & Refine Feature -->
+          <div class="refine-container" id="refine-container">
+            <h4>✍️ Comment & Improve This Video</h4>
+            <p class="refine-subtitle">Tell the AI director what changes you want (e.g. "make line 2 more emotional", "slow down dialogue", "adjust timing", "change translation of line 1"):</p>
+            <div class="refine-input-group">
+              <textarea id="refine-comment-input" rows="3" placeholder="Enter your instructions or comments to improve the video (e.g. 'Make the voice in line 1 sound more aggressive and tighten the pause in line 3')..."></textarea>
+              <button id="btn-apply-improvement" class="btn btn-primary">Apply AI Refinement & Re-Dub</button>
+            </div>
+            <div id="refine-status-box" class="refine-status-box" style="display: none;"></div>
+          </div>
+
           <p id="credits-spent" class="credits-spent mono">Credits used: --</p>
         </div>
       </section>

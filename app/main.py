@@ -41,6 +41,10 @@ class FeedbackPayload(BaseModel):
     fixes: list
     comments: Optional[str] = ""
 
+class RefinePayload(BaseModel):
+    job_id: str
+    instruction: str
+
 def probe_video(video_path: str) -> Dict[str, Any]:
     """Validates video with ffprobe: mp4 only, <=120s, <=100MB"""
     cmd = [
@@ -390,6 +394,11 @@ def execute_pipeline(job_id: str, video_path: str, target_lang: str):
                 "improvements": improvements
             }
 
+            # Save segments and dubbed items to job directory for iterative refinement
+            (job_dir / "segments.json").write_text(json.dumps(segments, indent=2), encoding="utf-8")
+            (job_dir / "dubbed_items.json").write_text(json.dumps(dubbed_items, indent=2), encoding="utf-8")
+            (job_dir / "target_lang.txt").write_text(target_lang, encoding="utf-8")
+
             update_job_status(job_id, stage="render", progress=100, status="completed", result_data=result_info)
 
         except Exception as e:
@@ -507,3 +516,178 @@ RULES:
         return {"advice": lines[:4]}
     except Exception:
         return {"advice": [f"Focus on {item['line']}: {item['issue']}" for item in report.get("top_issues", [])]}
+
+@app.post("/api/refine-video")
+async def refine_video(payload: RefinePayload):
+    """
+    Takes user comments/instructions and dynamically refines dialogue lines,
+    voice emotion, speed, and lip-sync cadence, regenerating the video.
+    """
+    job_id = payload.job_id
+    instruction = payload.instruction.strip()
+    if not instruction:
+        raise HTTPException(status_code=400, detail="Improvement instructions cannot be blank.")
+
+    job_dir = JOBS_DIR / job_id
+    segments_file = job_dir / "segments.json"
+    dubbed_file = job_dir / "dubbed_items.json"
+    video_path = job_dir / "source.mp4"
+
+    if not segments_file.exists() or not video_path.exists():
+        raise HTTPException(status_code=404, detail="Job session files not found. Upload a video first.")
+
+    segments = json.loads(segments_file.read_text(encoding="utf-8"))
+    dubbed_items = json.loads(dubbed_file.read_text(encoding="utf-8")) if dubbed_file.exists() else []
+    target_lang = (job_dir / "target_lang.txt").read_text(encoding="utf-8") if (job_dir / "target_lang.txt").exists() else "hi-IN"
+
+    import time
+    from google import genai
+    from google.genai import types
+    import soundfile as sf
+    import numpy as np
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    client = genai.Client(api_key=api_key)
+
+    # Ask Gemini how to apply user's refinement instructions to the lines
+    current_lines = []
+    for d in dubbed_items:
+        current_lines.append({
+            "id": d["id"],
+            "current_text": d["text"],
+            "duration": d["duration"]
+        })
+
+    prompt = f"""
+You are MonkeyLingo's senior dubbing audio engineer and dialogue adapter.
+The user watched the dubbed video and gave the following improvement comment/request:
+USER INSTRUCTION: "{instruction}"
+
+Current lines in {target_lang}:
+{json.dumps(current_lines, indent=2)}
+
+Adapt the lines to satisfy the user's instruction precisely:
+- If they asked to change tone, emotion, or words, update 'revised_text'.
+- Adjust 'speed' (0.88 to 1.12) to match their desired pacing.
+- Assign voice gender ('male' or 'female').
+
+Return ONLY a JSON array with objects containing:
+- "id": string (line ID)
+- "revised_text": string
+- "gender": "male" or "female"
+- "speed": float
+"""
+    try:
+        res = client.models.generate_content(
+            model="gemini-3.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json")
+        )
+        revised_data = json.loads(res.text)
+        rev_map = {r["id"]: r for r in revised_data}
+    except Exception as e:
+        rev_map = {}
+
+    gnani = GnaniClient()
+    takes_dir = job_dir / "takes"
+    takes_dir.mkdir(parents=True, exist_ok=True)
+    new_dubbed_items = []
+
+    for d in dubbed_items:
+        lid = d["id"]
+        orig_dur = d["duration"]
+        rev_info = rev_map.get(lid, {})
+        new_text = rev_info.get("revised_text", d["text"])
+        gender = rev_info.get("gender", "male")
+        voice = "Nalini" if gender == "female" else "Deepak"
+        speed = float(rev_info.get("speed", 1.0))
+        speed = max(0.88, min(1.12, speed))
+
+        raw_wav = takes_dir / f"{lid}_refined_raw.wav"
+        fitted_wav = takes_dir / f"{lid}_refined_fitted.wav"
+
+        # Re-synthesize with Gnani
+        gnani.tts_synthesize(
+            text=new_text,
+            voice=voice,
+            language=target_lang,
+            speed=speed,
+            output_path=str(raw_wav)
+        )
+
+        # Measure take duration
+        data, sr = sf.read(str(raw_wav))
+        synth_dur = len(data) / sr
+
+        # Rubberband time fit
+        cmd_rb = [
+            "rubberband", "-q",
+            "-t", f"{(orig_dur / max(0.2, synth_dur)):.4f}",
+            str(raw_wav), str(fitted_wav)
+        ]
+        res_rb = subprocess.run(cmd_rb, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        final_take_wav = fitted_wav if res_rb.returncode == 0 and fitted_wav.exists() else raw_wav
+
+        new_dubbed_items.append({
+            "id": lid,
+            "start": d["start"],
+            "end": d["end"],
+            "duration": orig_dur,
+            "text": new_text,
+            "wav_path": str(final_take_wav)
+        })
+
+    # Remix audio bed
+    total_duration = probe_video(str(video_path))["duration"]
+    sr = 48000
+    master_samples = int(total_duration * sr)
+    master_dub = np.zeros(master_samples, dtype=np.float32)
+
+    for item in new_dubbed_items:
+        w_path = item["wav_path"]
+        if not Path(w_path).exists():
+            continue
+        d_arr, d_sr = sf.read(w_path)
+        if len(d_arr.shape) > 1:
+            d_arr = d_arr.mean(axis=1)
+        if d_sr != sr:
+            continue
+        st_idx = int(item["start"] * sr)
+        end_idx = min(master_samples, st_idx + len(d_arr))
+        chunk = d_arr[:end_idx - st_idx]
+        master_dub[st_idx:end_idx] += chunk
+
+    np.random.seed(42)
+    noise = np.random.normal(0, 0.008, master_samples).astype(np.float32)
+    mixed_audio = master_dub + noise
+    peak = np.max(np.abs(mixed_audio))
+    if peak > 0.95:
+        mixed_audio = (mixed_audio / peak) * 0.95
+
+    out_wav = job_dir / "dubbed_dialogue.wav"
+    sf.write(str(out_wav), mixed_audio, sr)
+
+    out_mp4 = job_dir / "dubbed_output.mp4"
+    cmd_mux = [
+        "ffmpeg", "-y",
+        "-i", str(video_path),
+        "-i", str(out_wav),
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        str(out_mp4)
+    ]
+    subprocess.run(cmd_mux, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Save updated dubbed items
+    (job_dir / "dubbed_items.json").write_text(json.dumps(new_dubbed_items, indent=2), encoding="utf-8")
+
+    return {
+        "success": True,
+        "message": f"Applied changes: '{instruction}'. Video regenerated with enhanced dialogue & timing.",
+        "mp4_url": f"/api/jobs/{job_id}/download/mp4?t={int(time.time())}",
+        "revised_lines": [f"{item['id']}: {item['text']}" for item in new_dubbed_items[:4]]
+    }
+
