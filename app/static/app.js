@@ -293,14 +293,19 @@ if (btnApplyImprovement) {
       const data = await res.json();
       refineStatusBox.innerHTML = `<strong>✓ Success:</strong> ${data.message}<br><small class="mono">${(data.revised_lines || []).join(' | ')}</small>`;
       
-      // Update player to play the newly improved video
-      dubbedVideoUrl = data.mp4_url;
-      outputPlayer.src = dubbedVideoUrl;
-      outputPlayer.play();
+      // Update player with a fresh timestamp query to force immediate reload
+      const freshUrl = `${data.mp4_url}&reload=${Date.now()}`;
+      dubbedVideoUrl = freshUrl;
+      outputPlayer.pause();
+      outputPlayer.removeAttribute('src');
+      outputPlayer.src = freshUrl;
+      outputPlayer.load();
+      outputPlayer.play().catch(e => console.log('Autoplay deferred:', e));
+
       btnToggleDubbed.classList.add('active');
       btnToggleOriginal.classList.remove('active');
 
-      downloadMp4.href = data.mp4_url;
+      downloadMp4.href = freshUrl;
     } catch (err) {
       refineStatusBox.innerHTML = `<span style="color: #D32F2F;"><strong>Error:</strong> ${err.message}</span>`;
     } finally {

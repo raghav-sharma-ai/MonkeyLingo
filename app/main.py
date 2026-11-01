@@ -74,6 +74,49 @@ def update_job_status(job_id: str, stage: str, progress: int, status: str = "run
     }
     job_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
+def apply_natural_fitting(raw_wav_path: str, orig_dur: float, out_fitted_path: str):
+    """
+    Fits dialogue naturally:
+    - Strips leading and trailing dead digital silence buffers so speech onset locks to mouth.
+    - Clamps time-stretching strictly within 0.88x to 1.12x (L8) so voices never slur or drag.
+    - Preserves natural vocal decay without forced elongation.
+    """
+    import soundfile as sf
+    import numpy as np
+
+    data, sr = sf.read(raw_wav_path)
+    if len(data.shape) > 1:
+        data = data.mean(axis=1)
+
+    # Trim digital silence (< -46 dBFS)
+    non_zero = np.where(np.abs(data) > 0.005)[0]
+    if len(non_zero) > 0:
+        data = data[non_zero[0]:non_zero[-1]]
+
+    cur_dur = len(data) / sr
+    ratio = orig_dur / max(0.2, cur_dur)
+
+    # If within 12%, do not stretch with rubberband; let voice breathe naturally
+    if 0.88 <= ratio <= 1.12:
+        sf.write(out_fitted_path, data, sr)
+        return
+
+    # If outside 12%, clamp strictly to avoid slurring or chipmunk effects
+    clamped_ratio = max(0.88, min(1.12, ratio))
+    temp_trim = Path(out_fitted_path).with_suffix(".trim.wav")
+    sf.write(str(temp_trim), data, sr)
+
+    cmd_rb = [
+        "rubberband", "-q",
+        "-t", f"{clamped_ratio:.4f}",
+        str(temp_trim), str(out_fitted_path)
+    ]
+    res = subprocess.run(cmd_rb, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if res.returncode != 0 or not Path(out_fitted_path).exists():
+        sf.write(out_fitted_path, data, sr)
+    if temp_trim.exists():
+        temp_trim.unlink()
+
 GEMINI_FALLBACK_MODELS = [
     "gemini-3.5-flash-lite",
     "gemini-3.7-flash",
@@ -317,14 +360,9 @@ def execute_pipeline(job_id: str, video_path: str, target_lang: str):
                 if err_pct > 0.08:
                     duration_errors.append(f"{lid} (delta: {abs(synth_dur - orig_dur):.2f}s, {err_pct*100:.1f}%)")
 
-                # Silence trim onset & time-fit with rubberband
-                cmd_rb = [
-                    "rubberband", "-q",
-                    "-t", f"{(orig_dur / max(0.2, synth_dur)):.4f}",
-                    str(raw_wav), str(fitted_wav)
-                ]
-                res_rb = subprocess.run(cmd_rb, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                final_take_wav = fitted_wav if res_rb.returncode == 0 and fitted_wav.exists() else raw_wav
+                # Silence trim onset & apply natural time-fitting
+                apply_natural_fitting(str(raw_wav), orig_dur, str(fitted_wav))
+                final_take_wav = fitted_wav if fitted_wav.exists() else raw_wav
 
                 dubbed_items.append({
                     "id": lid,
@@ -652,18 +690,9 @@ Return ONLY a JSON array with objects containing:
             output_path=str(raw_wav)
         )
 
-        # Measure take duration
-        data, sr = sf.read(str(raw_wav))
-        synth_dur = len(data) / sr
-
-        # Rubberband time fit
-        cmd_rb = [
-            "rubberband", "-q",
-            "-t", f"{(orig_dur / max(0.2, synth_dur)):.4f}",
-            str(raw_wav), str(fitted_wav)
-        ]
-        res_rb = subprocess.run(cmd_rb, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        final_take_wav = fitted_wav if res_rb.returncode == 0 and fitted_wav.exists() else raw_wav
+        # Apply natural fitting (silence trim & clamp to avoid slurring)
+        apply_natural_fitting(str(raw_wav), orig_dur, str(fitted_wav))
+        final_take_wav = fitted_wav if fitted_wav.exists() else raw_wav
 
         new_dubbed_items.append({
             "id": lid,
