@@ -1,0 +1,15 @@
+# Python
+venv/
+*.pyc
+__pycache__/
+
+# Credentials & secrets
+.env
+
+# Job Data & Temporary caches
+cache/
+data/jobs/
+out/
+*.wav
+*.mp4
+.DS_Store

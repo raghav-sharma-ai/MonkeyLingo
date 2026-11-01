@@ -1,0 +1,11 @@
+fastapi==0.162.0
+google-genai==2.34.0
+librosa==1.0.0
+numpy==2.5.4
+openai-whisper==20250625
+pandas==3.1.0
+python-dotenv==1.2.4
+python-multipart==0.0.33
+requests==2.34.2
+soundfile==0.14.0
+uvicorn==0.54.0

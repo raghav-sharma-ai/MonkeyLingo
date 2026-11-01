@@ -1,0 +1,106 @@
+[
+  {
+    "id": "line_000",
+    "start": 0.0,
+    "end": 1.94,
+    "duration": 1.94,
+    "text": "Come on, Mother, you're missing the point.",
+    "slice_path": "data/scene/slices/line_000.wav"
+  },
+  {
+    "id": "line_001",
+    "start": 3.4,
+    "end": 3.78,
+    "duration": 0.38,
+    "text": "Okay.",
+    "slice_path": "data/scene/slices/line_001.wav"
+  },
+  {
+    "id": "line_002",
+    "start": 4.98,
+    "end": 6.4,
+    "duration": 1.42,
+    "text": "What is the point, Robert?",
+    "slice_path": "data/scene/slices/line_002.wav"
+  },
+  {
+    "id": "line_003",
+    "start": 8.6,
+    "end": 11.74,
+    "duration": 3.14,
+    "text": "Life is messy, it doesn't make any God damn sense.",
+    "slice_path": "data/scene/slices/line_003.wav"
+  },
+  {
+    "id": "line_004",
+    "start": 11.96,
+    "end": 13.3,
+    "duration": 1.34,
+    "text": "Sorry to bring the news to you.",
+    "slice_path": "data/scene/slices/line_004.wav"
+  },
+  {
+    "id": "line_005",
+    "start": 13.66,
+    "end": 15.62,
+    "duration": 1.96,
+    "text": "Life's just random.",
+    "slice_path": "data/scene/slices/line_005.wav"
+  },
+  {
+    "id": "line_006",
+    "start": 18.04,
+    "end": 19.1,
+    "duration": 1.06,
+    "text": "Everything's random.",
+    "slice_path": "data/scene/slices/line_006.wav"
+  },
+  {
+    "id": "line_007",
+    "start": 20.1,
+    "end": 22.6,
+    "duration": 2.5,
+    "text": "My success, you here now,",
+    "slice_path": "data/scene/slices/line_007.wav"
+  },
+  {
+    "id": "line_008",
+    "start": 23.58,
+    "end": 26.42,
+    "duration": 2.84,
+    "text": "there's nothing we can do to control anything.",
+    "slice_path": "data/scene/slices/line_008.wav"
+  },
+  {
+    "id": "line_009",
+    "start": 28.32,
+    "end": 31.56,
+    "duration": 3.24,
+    "text": "But when you complete a puzzle, when you finish it,",
+    "slice_path": "data/scene/slices/line_009.wav"
+  },
+  {
+    "id": "line_010",
+    "start": 32.52,
+    "end": 34.86,
+    "duration": 2.34,
+    "text": "you know that you have made all the right choices.",
+    "slice_path": "data/scene/slices/line_010.wav"
+  },
+  {
+    "id": "line_011",
+    "start": 35.5,
+    "end": 39.32,
+    "duration": 3.82,
+    "text": "No matter how many wrong faces you try to fit into a wrong place,",
+    "slice_path": "data/scene/slices/line_011.wav"
+  },
+  {
+    "id": "line_012",
+    "start": 39.54,
+    "end": 43.48,
+    "duration": 3.94,
+    "text": "but at the very end everything makes one perfect picture.",
+    "slice_path": "data/scene/slices/line_012.wav"
+  }
+]

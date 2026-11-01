@@ -1,0 +1,33 @@
+# Project Configuration for MonkeyLingo
+project:
+  name: "MonkeyLingo"
+  target_language: "hi-IN"
+  target_language_name: "Hindi"
+
+scene:
+  video_path: "data/scene/scene.mp4"
+  extracted_audio: "data/scene/audio_48k.wav"
+
+audio:
+  sample_rate: 48000
+  channels: 1
+
+characters:
+  male_lead:
+    name: "Robert"
+    voice: "Deepak"      # Gnani male voice
+    gender: "male"
+    lines: ["line_000", "line_003", "line_004", "line_005", "line_006", "line_007", "line_008", "line_009", "line_010", "line_011", "line_012"]
+  female_lead:
+    name: "Mother"
+    voice: "Nalini"      # Gnani female voice
+    gender: "female"
+    lines: ["line_001", "line_002"]
+
+tts:
+  provider: "gnani"
+  model: "timbre-v2.5"
+
+performance_tuning:
+  max_stretch_percent: 0.12 # max 12% rubberband time-fit
+  ducking_factor: 0.15      # duck original speech so ambient room tone & foley remain

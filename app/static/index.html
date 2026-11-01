@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MonkeyLingo — Performance-Aware AI Dubbing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header with Wordmark -->
+    <header class="header">
+      <div class="wordmark-container">
+        <h1 class="wordmark">Monkey<span class="accent-box">L</span>ingo</h1>
+      </div>
+      <p class="tagline">Upload a video, pick a language, get a dubbed version.</p>
+    </header>
+
+    <main class="main-flow">
+      <!-- Step 01: Upload -->
+      <section class="step-card" id="step-upload">
+        <div class="step-header">
+          <span class="step-num">01</span>
+          <h2>Upload Video</h2>
+        </div>
+        
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload MP4 video">
+          <div class="dropzone-inner">
+            <p class="drop-text">Drag and drop MP4 here, or <strong>browse files</strong></p>
+            <p class="drop-hint">MP4 format only · Max 120 seconds · Max 100 MB</p>
+          </div>
+          <input type="file" id="file-input" accept="video/mp4" style="display: none;">
+        </div>
+
+        <div id="file-meta" class="file-meta" style="display: none;">
+          <div class="meta-row">
+            <span class="meta-label">File:</span>
+            <span id="meta-name" class="mono">scene.mp4</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Duration:</span>
+            <span id="meta-duration" class="mono">--</span>
+          </div>
+          <video id="preview-player" class="video-preview" controls></video>
+        </div>
+
+        <div class="consent-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="consent-check">
+            <span>I own this video or have permission to use it, and every voice in it has consented.</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 02: Language & Voice Configuration -->
+      <section class="step-card" id="step-config">
+        <div class="step-header">
+          <span class="step-num">02</span>
+          <h2>Select Language & Voices</h2>
+        </div>
+
+        <div class="config-grid">
+          <div class="field-group">
+            <label for="lang-select">Target Language</label>
+            <select id="lang-select">
+              <option value="hi-IN">Hindi (hi-IN) — Gnani Timbre Verified</option>
+              <option value="te-IN">Telugu (te-IN) — Gnani Timbre Verified</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="voice-select">Voice Preset</label>
+            <select id="voice-select">
+              <option value="auto">Character Dedicated (Deepak / Nalini)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toggle-group">
+          <label class="toggle-label">
+            <input type="checkbox" id="lipsync-toggle" checked>
+            <span>Sub-sentence Lip-Sync & Clause Alignment (beta)</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 03: Run & Result -->
+      <section class="step-card" id="step-action">
+        <div class="step-header">
+          <span class="step-num">03</span>
+          <h2>Synthesize & Dub</h2>
+        </div>
+
+        <button id="dub-button" class="btn btn-primary" disabled>Start Dubbing Job</button>
+
+        <!-- Stepped Pipeline Progress -->
+        <div id="progress-container" class="progress-container" style="display: none;">
+          <div class="stepped-tracker">
+            <div class="stage-step" data-stage="ingest"><span class="step-dot"></span>Ingest</div>
+            <div class="stage-step" data-stage="segment"><span class="step-dot"></span>Segment</div>
+            <div class="stage-step" data-stage="transcribe"><span class="step-dot"></span>Transcribe</div>
+            <div class="stage-step" data-stage="translate"><span class="step-dot"></span>Translate</div>
+            <div class="stage-step" data-stage="generate"><span class="step-dot"></span>Generate</div>
+            <div class="stage-step" data-stage="mix"><span class="step-dot"></span>Mix</div>
+            <div class="stage-step" data-stage="render"><span class="step-dot"></span>Render</div>
+          </div>
+          <p id="progress-label" class="progress-label mono">Initializing...</p>
+        </div>
+
+        <!-- Result View -->
+        <div id="result-view" class="result-view" style="display: none;">
+          <div class="player-header">
+            <h3>Dubbed Output</h3>
+            <div class="view-toggles">
+              <button id="btn-toggle-original" class="tab-btn">Original English</button>
+              <button id="btn-toggle-dubbed" class="tab-btn active">Dubbed Version</button>
+            </div>
+          </div>
+
+          <video id="output-player" class="video-preview" controls></video>
+
+          <div class="download-bar">
+            <a id="download-mp4" class="btn btn-secondary" download>Download MP4</a>
+            <a id="download-wav" class="btn btn-secondary" download>Download WAV</a>
+            <a id="download-srt" class="btn btn-secondary" download>Download SRT</a>
+          </div>
+
+          <p id="credits-spent" class="credits-spent mono">Credits used: --</p>
+        </div>
+      </section>
+
+      <!-- Feedback & Quality Inspection Panel -->
+      <section id="feedback-panel" class="step-card feedback-card" style="display: none;">
+        <div class="step-header">
+          <span class="step-num">QA</span>
+          <h2>Quality Report & Feedback</h2>
+        </div>
+
+        <!-- Auto Report Summary -->
+        <div class="auto-report">
+          <h4>Acoustic Quality Metrics</h4>
+          <ul id="report-list" class="report-list mono">
+            <!-- Populated via JS -->
+          </ul>
+          <button id="btn-focus-advice" class="btn btn-accent">What should I focus on?</button>
+          <div id="focus-advice-box" class="focus-box" style="display: none;"></div>
+        </div>
+
+        <!-- Human Feedback Form -->
+        <form id="feedback-form" class="feedback-form">
+          <h4>Rate Quality (1 = Poor, 5 = Excellent)</h4>
+          <div class="ratings-grid">
+            <div class="rate-item"><label>Translation</label><input type="number" min="1" max="5" value="5" class="rate-input" name="rate_translation"></div>
+            <div class="rate-item"><label>Naturalness</label><input type="number" min="1" max="5" value="5" class="rate-input" name="rate_naturalness"></div>
+            <div class="rate-item"><label>Emotion</label><input type="number" min="1" max="5" value="4" class="rate-input" name="rate_emotion"></div>
+            <div class="rate-item"><label>Timing</label><input type="number" min="1" max="5" value="5" class="rate-input" name="rate_timing"></div>
+            <div class="rate-item"><label>Audio Mix</label><input type="number" min="1" max="5" value="5" class="rate-input" name="rate_mix"></div>
+            <div class="rate-item"><label>Lip-Sync</label><input type="number" min="1" max="5" value="4" class="rate-input" name="rate_lipsync"></div>
+          </div>
+
+          <div class="fix-checkboxes">
+            <label class="cb-fix"><input type="checkbox" name="fix_item" value="timing"> Timing</label>
+            <label class="cb-fix"><input type="checkbox" name="fix_item" value="voice"> Voice</label>
+            <label class="cb-fix"><input type="checkbox" name="fix_item" value="emotion"> Emotion</label>
+            <label class="cb-fix"><input type="checkbox" name="fix_item" value="translation"> Translation</label>
+            <label class="cb-fix"><input type="checkbox" name="fix_item" value="mix"> Mix</label>
+            <label class="cb-fix"><input type="checkbox" name="fix_item" value="lipsync"> Lip-Sync</label>
+          </div>
+
+          <textarea id="feedback-text" rows="3" placeholder="Optional notes on specific lines..."></textarea>
+          <button type="submit" class="btn btn-secondary">Submit Feedback</button>
+          <span id="feedback-msg" class="feedback-msg"></span>
+        </form>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>MonkeyLingo · Powered by Gnani Timbre & Gemini Intelligence</p>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
