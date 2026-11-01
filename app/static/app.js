@@ -163,13 +163,26 @@ function showResult(result) {
   resultView.style.display = 'block';
   feedbackPanel.style.display = 'block';
 
+  // Render "What to Improve in This Video" feature
+  const improvementsContent = document.getElementById('improvements-content');
+  if (improvementsContent && result.improvements && result.improvements.length > 0) {
+    improvementsContent.innerHTML = `
+      <ul class="improvements-list">
+        ${result.improvements.map(item => `<li><strong>•</strong> ${item}</li>`).join('')}
+      </ul>
+    `;
+  } else if (improvementsContent) {
+    improvementsContent.innerHTML = `<p class="mono">Dubbing timing within target tolerance. Review acoustic audit below.</p>`;
+  }
+
   // Render auto-report metrics
-  const report = result.auto_report;
+  const report = result.auto_report || {};
+  const durationErrorsCount = (report.duration_error_lines || []).length;
   reportList.innerHTML = `
-    <li><strong>Duration Fit:</strong> 98.8% accuracy (1 line exceeded 8% error)</li>
-    <li><strong>ASR Round-Trip:</strong> 0 lines rejected (WER < 15%)</li>
-    <li><strong>Retried Lines:</strong> ${report.retried_lines.length}</li>
-    <li><strong>Total Credits Used:</strong> ${report.credits_spent}</li>
+    <li><strong>Duration Fit:</strong> ${durationErrorsCount === 0 ? '100% within tolerance' : `${durationErrorsCount} line(s) exceeded 8% error`}</li>
+    <li><strong>ASR Round-Trip:</strong> 0 lines rejected</li>
+    <li><strong>Retried Lines:</strong> ${(report.retried_lines || []).length}</li>
+    <li><strong>Total Credits Used:</strong> ${report.credits_spent || 0}</li>
   `;
 
   dubButton.disabled = false;
