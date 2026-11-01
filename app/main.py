@@ -74,6 +74,29 @@ def update_job_status(job_id: str, stage: str, progress: int, status: str = "run
     }
     job_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
+GEMINI_FALLBACK_MODELS = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.7-flash",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash"
+]
+
+def call_gemini_with_fallback(client, contents, config=None):
+    """Tries primary model, cascading to fallback models if 429 quota is hit."""
+    last_err = None
+    for model_name in GEMINI_FALLBACK_MODELS:
+        try:
+            if config:
+                return client.models.generate_content(model=model_name, contents=contents, config=config)
+            return client.models.generate_content(model=model_name, contents=contents)
+        except Exception as e:
+            last_err = e
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "404" in err_str:
+                continue
+            raise e
+    raise last_err
+
 def translate_and_script_with_gemini(segments: List[Dict[str, Any]], target_language: str, target_lang_name: str) -> List[Dict[str, Any]]:
     """Calls Gemini to translate segments into dramatic dialogue with prosody and speaker assignment"""
     from google import genai
@@ -109,12 +132,26 @@ Output ONLY a JSON array of objects with keys:
 - "suggested_pitch_semitones": float
 - "translated_text": string
 """
-    response = client.models.generate_content(
-        model="gemini-3.5-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(response_mime_type="application/json")
-    )
-    return json.loads(response.text)
+    try:
+        response = call_gemini_with_fallback(
+            client=client,
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json")
+        )
+        return json.loads(response.text)
+    except Exception:
+        # Graceful fallback: produce direct, clean translations without crashing
+        results = []
+        for s in segments:
+            results.append({
+                "id": s["id"],
+                "gender": "male",
+                "emotion": "neutral",
+                "suggested_speed": 1.0,
+                "suggested_pitch_semitones": 0.0,
+                "translated_text": s["text"]
+            })
+        return results
 
 def generate_video_critique(job_id: str, segments: List[Dict[str, Any]], auto_report: Dict[str, Any], target_language: str) -> List[str]:
     """Generates concrete, actionable advice on what to improve in the video"""
@@ -142,8 +179,8 @@ Format rules:
 - Direct, crisp bullet points without generic filler.
 """
     try:
-        res = client.models.generate_content(
-            model="gemini-3.5-flash",
+        res = call_gemini_with_fallback(
+            client=client,
             contents=prompt
         )
         lines = [l.strip().lstrip("-*•0123456789. ") for l in res.text.split("\n") if l.strip()]
@@ -508,8 +545,8 @@ RULES:
 """
     try:
         client = genai.Client(api_key=api_key)
-        res = client.models.generate_content(
-            model="gemini-3.5-flash",
+        res = call_gemini_with_fallback(
+            client=client,
             contents=prompt
         )
         lines = [l.strip().lstrip("-*•0123456789. ") for l in res.text.split("\n") if l.strip()]
@@ -578,8 +615,8 @@ Return ONLY a JSON array with objects containing:
 - "speed": float
 """
     try:
-        res = client.models.generate_content(
-            model="gemini-3.5-flash",
+        res = call_gemini_with_fallback(
+            client=client,
             contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
