@@ -12,4 +12,5 @@ data/jobs/
 out/
 *.wav
 *.mp4
+!demo/*.mp4
 .DS_Store
