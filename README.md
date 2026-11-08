@@ -42,14 +42,6 @@ We don't just translate words; we preserve character soul, emotion, and visual s
 
 ---
 
-## 📺 Demo Video
-
-Watch the official demo video:  
-👉 **[Watch DEMO_GnaniAI.mp4 on GitHub](https://github.com/raghav-sharma-ai/MonkeyLingo/blob/main/demo/DEMO_GnaniAI.mp4)**  
-*(Direct raw video stream link: [Raw MP4](https://raw.githubusercontent.com/raghav-sharma-ai/MonkeyLingo/main/demo/DEMO_GnaniAI.mp4))*
-
----
-
 ## 1. Quick Start (<10 lines)
 
 ```bash
